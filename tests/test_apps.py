@@ -25,20 +25,20 @@ def fastapi_service():
     return service
     
 def create_test_image():
-    """创建测试图像"""
+    """Create a test image"""
     img = Image.new('RGB', (100, 100), color='red')
     buffer = BytesIO()
     img.save(buffer, format='JPEG')
     return base64.b64encode(buffer.getvalue()).decode()
     
 def test_image_processor(flask_service):
-    """测试图像处理应用"""
-    # 创建应用实例
+    """test image processor"""
+    # create app instance
     app_id = flask_service.app_manager.create_app_instance("image_processor")
     app = flask_service.app_manager.get_app(app_id)
     assert app is not None
     
-    # 上传配置
+    # upload config
     test_image = create_test_image()
     app.upload_config("input", {"image_base64": test_image})
     app.upload_config("enhancement", {
@@ -47,21 +47,21 @@ def test_image_processor(flask_service):
         "sharpness": 1.3
     })
     
-    # 验证配置
+    # validate configs
     assert app.validate_configs() is True
     
-    # 启动应用
+    # start app
     app.start()
     assert app.is_running is True
     
-    # 等待处理完成
+    # wait for processing to complete
     import time
     max_wait = 10
     while app.get_status()["progress"] < 100 and max_wait > 0:
         time.sleep(1)
         max_wait -= 1
         
-    # 检查结果
+    # check results
     status = app.get_status()
     assert status["progress"] == 100
     assert "preview" in status
@@ -70,39 +70,39 @@ def test_image_processor(flask_service):
     assert "processed_image" in report
     assert "enhancement_params" in report
     
-    # 停止应用
+    # stop app
     app.stop()
     assert app.is_running is False
     
 def test_data_analyzer(flask_service):
-    """测试数据分析应用"""
-    # 创建应用实例
+    """test data analyzer"""
+    # create app instance
     app_id = flask_service.app_manager.create_app_instance("data_analyzer")
     app = flask_service.app_manager.get_app(app_id)
     assert app is not None
     
-    # 生成测试数据
+    # generate test data
     test_data = np.random.normal(0, 1, 1000).tolist()
     
-    # 上传配置
+    # upload config
     app.upload_config("data", {"values": test_data})
     app.upload_config("analysis", {"metrics": ["mean", "median", "std", "histogram"]})
     
-    # 验证配置
+    # validate configs
     assert app.validate_configs() is True
     
-    # 启动应用
+    # start app
     app.start()
     assert app.is_running is True
     
-    # 等待分析完成
+    # wait for analysis to complete
     import time
     max_wait = 10
     while app.get_status()["progress"] < 100 and max_wait > 0:
         time.sleep(1)
         max_wait -= 1
         
-    # 检查结果
+    # check results
     status = app.get_status()
     assert status["progress"] == 100
     assert "partial_results" in status
@@ -113,35 +113,35 @@ def test_data_analyzer(flask_service):
     assert "analysis_results" in report
     assert "plot" in report
     
-    # 验证分析结果
+    # validate analysis results
     results = report["analysis_results"]
-    assert abs(results["mean"]) < 0.1  # 期望接近0
-    assert abs(results["std"] - 1.0) < 0.1  # 期望接近1
+    assert abs(results["mean"]) < 0.1  # expect close to 0
+    assert abs(results["std"] - 1.0) < 0.1  # expect close to 1
     
-    # 停止应用
+    # stop app
     app.stop()
     assert app.is_running is False
     
 def test_invalid_configs():
-    """测试无效配置"""
-    # 创建图像处理应用
+    """test invalid configs"""
+    # create image processor app
     app = ImageProcessor("test")
     
-    # 测试缺少必要配置
+    # test missing required configs
     assert app.validate_configs() is False
     
-    # 测试无效的图像处理配置
+    # test invalid image processor configs
     app.upload_config("input", {"wrong_key": "data"})
     app.upload_config("enhancement", {"brightness": 1.0})
     assert app.validate_configs() is False
     
-    # 创建数据分析应用
+    # create data analyzer app
     app = DataAnalyzer("test")
     
-    # 测试缺少必要配置
+    # test missing required configs
     assert app.validate_configs() is False
     
-    # 测试无效的数据分析配置
+    # test invalid data analyzer configs
     app.upload_config("data", {"wrong_key": []})
     app.upload_config("analysis", {"metrics": ["invalid_metric"]})
     assert app.validate_configs() is False 
