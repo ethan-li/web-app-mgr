@@ -5,12 +5,14 @@ from pathlib import Path
 class BaseApp(ABC):
     def __init__(self, app_id: str):
         self.app_id = app_id
+        self.config_name: str = ""
         self.configs: Dict[str, Dict] = {}
         self.is_running = False
         
     def upload_config(self, config_name: str, config_data: Dict[str, Any]) -> None:
         """Upload configuration file"""
-        self.configs[config_name] = config_data
+        self.configs = config_data
+        self.config_name = config_name
         
     def get_config(self, config_name: str) -> Dict[str, Any]:
         """Get configuration file"""

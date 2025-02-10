@@ -62,6 +62,7 @@ class FlaskWebService(WebService):
         if not config_data:
             return jsonify({"error": "Missing configuration data"}), 400
             
+        print(f"Uploading config {config_name} for app {app_id}, data: {config_data}")
         app = self.app_manager.get_app(app_id)
         app.upload_config(config_name, config_data)
         return jsonify({"message": "Configuration uploaded"})

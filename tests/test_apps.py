@@ -26,11 +26,35 @@ def fastapi_service():
     
 def create_test_image():
     """Create a test image"""
-    img = Image.new('RGB', (100, 100), color='red')
+    width, height = 256, 256
+    img = Image.new('RGB', (width, height))
+
+    # Generate a gradient across the entire color space
+    for x in range(width):
+        for y in range(height):
+            # Normalize x, y to range from 0 to 1
+            r = int((x / width) * 255)  # Red channel
+            g = int((y / height) * 255)  # Green channel
+            b = 255 - r  # Blue channel as inverse of red for a complementary gradient
+            
+            # Set pixel
+            img.putpixel((x, y), (r, g, b))
+
     buffer = BytesIO()
     img.save(buffer, format='JPEG')
-    return base64.b64encode(buffer.getvalue()).decode()
+    base64_str = base64.b64encode(buffer.getvalue()).decode()
+
+    # Save the base64 string to a JSON file
+    import json
+    json_data = {
+        "image_base64": base64_str
+    }
     
+    with open("image_data.json", "w") as json_file:
+        json.dump(json_data, json_file)
+
+    return base64_str
+
 def test_image_processor(flask_service):
     """test image processor"""
     # create app instance
@@ -40,12 +64,17 @@ def test_image_processor(flask_service):
     
     # upload config
     test_image = create_test_image()
-    app.upload_config("input", {"image_base64": test_image})
-    app.upload_config("enhancement", {
-        "brightness": 1.2,
-        "contrast": 1.1,
-        "sharpness": 1.3
-    })
+    app.upload_config(
+        "test_image_processor", 
+        {
+            "input": {"image_base64": test_image},
+            "enhancement": {
+                "brightness": 1.2,
+                "contrast": 1.1,
+                "sharpness": 1.3
+            }
+        }
+    )
     
     # validate configs
     assert app.validate_configs() is True
@@ -85,8 +114,13 @@ def test_data_analyzer(flask_service):
     test_data = np.random.normal(0, 1, 1000).tolist()
     
     # upload config
-    app.upload_config("data", {"values": test_data})
-    app.upload_config("analysis", {"metrics": ["mean", "median", "std", "histogram"]})
+    app.upload_config(
+        "test_data_analyzer", 
+        {
+            "data": {"values": test_data}, 
+            "analysis": {"metrics": ["mean", "median", "std", "histogram"]}
+        }
+    )
     
     # validate configs
     assert app.validate_configs() is True

@@ -1,0 +1,8 @@
+{
+    "data": {
+        "values": [1, 2, 3, 4, 5, 5, 4, 4, 3]
+    },
+    "analysis": {
+        "metrics": ["mean", "median", "std", "histogram"]
+    }
+}
