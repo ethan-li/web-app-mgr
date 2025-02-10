@@ -4,6 +4,8 @@ from typing import Dict, Any, List
 import base64
 from io import BytesIO
 
+import matplotlib
+matplotlib.use('Agg')  # Set the backend to non-interactive Agg
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -40,6 +42,26 @@ class DataAnalyzer(BaseApp):
             
         return True
         
+    def _create_histogram(self, data: np.ndarray) -> str:
+        """Create histogram and return as base64 encoded string"""
+        try:
+            # Create a new figure with specified backend
+            fig = plt.figure(figsize=(10, 6))
+            plt.hist(data, bins=30, edgecolor='black')
+            plt.title('Data Distribution Histogram')
+            plt.xlabel('Value')
+            plt.ylabel('Frequency')
+            
+            # Save plot to memory
+            buffer = BytesIO()
+            fig.savefig(buffer, format='png', bbox_inches='tight')
+            plt.close(fig)  # Explicitly close the figure
+            
+            return base64.b64encode(buffer.getvalue()).decode()
+        except Exception as e:
+            print(f"Error creating histogram: {str(e)}")
+            return None
+        
     def _analyze_data(self):
         """Analyze data in background thread"""
         try:
@@ -66,18 +88,7 @@ class DataAnalyzer(BaseApp):
                 
             # Generate histogram
             if "histogram" in metrics:
-                plt.figure(figsize=(10, 6))
-                plt.hist(self.raw_data, bins=30, edgecolor='black')
-                plt.title('Data Distribution Histogram')
-                plt.xlabel('Value')
-                plt.ylabel('Frequency')
-                
-                # Save plot to memory
-                buffer = BytesIO()
-                plt.savefig(buffer, format='png')
-                plt.close()
-                
-                self.current_plot = base64.b64encode(buffer.getvalue()).decode()
+                self.current_plot = self._create_histogram(self.raw_data)
                 
             # Simulate processing time
             time.sleep(2)
@@ -85,6 +96,7 @@ class DataAnalyzer(BaseApp):
             
         except Exception as e:
             self.progress = -1
+            print(f"Error in _analyze_data: {str(e)}")  # Add error logging
             raise e
             
     def start(self) -> None:

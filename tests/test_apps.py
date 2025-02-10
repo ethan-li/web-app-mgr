@@ -156,8 +156,13 @@ def test_invalid_configs():
     assert app.validate_configs() is False
     
     # test invalid image processor configs
-    app.upload_config("input", {"wrong_key": "data"})
-    app.upload_config("enhancement", {"brightness": 1.0})
+    app.upload_config(
+        "wrong_cfg", 
+        {
+            "input": {"wrong_key": "data"}, 
+            "enhancement": {"brightness": 1.0}
+        }
+    )
     assert app.validate_configs() is False
     
     # create data analyzer app
@@ -170,3 +175,4 @@ def test_invalid_configs():
     app.upload_config("data", {"wrong_key": []})
     app.upload_config("analysis", {"metrics": ["invalid_metric"]})
     assert app.validate_configs() is False 
+
