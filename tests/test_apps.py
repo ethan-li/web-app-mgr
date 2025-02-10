@@ -44,15 +44,6 @@ def create_test_image():
     img.save(buffer, format='JPEG')
     base64_str = base64.b64encode(buffer.getvalue()).decode()
 
-    # Save the base64 string to a JSON file
-    import json
-    json_data = {
-        "image_base64": base64_str
-    }
-    
-    with open("image_data.json", "w") as json_file:
-        json.dump(json_data, json_file)
-
     return base64_str
 
 def test_image_processor(flask_service):
