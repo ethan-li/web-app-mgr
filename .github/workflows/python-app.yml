@@ -5,9 +5,10 @@ name: Web Application Manager
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "**" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "**" ]
+  workflow_dispatch:  # allow manual trigger
 
 permissions:
   contents: read
