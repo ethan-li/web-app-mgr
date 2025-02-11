@@ -12,23 +12,29 @@ class ImageProcessor(BaseApp):
     def __init__(self, app_id: str):
         super().__init__(app_id)
         self.required_configs = ["input", "enhancement"]
+        self.config_image_processor = None
         self.processing_thread = None
         self.current_image = None
         self.enhanced_image = None
         self.progress = 0
         
     def validate_configs(self) -> bool:
+        if self.configs is None or self.configs.get("default") is None:
+            return False
+
+        self.config_image_processor = self.configs["default"]
+
         """Validate configuration files"""
-        if not all(config in self.configs for config in self.required_configs):
+        if not all(config in self.config_image_processor for config in self.required_configs):
             return False
             
         # Validate input configuration
-        input_config = self.configs["input"]
+        input_config = self.config_image_processor["input"]
         if "image_base64" not in input_config:
             return False
             
         # Validate enhancement configuration
-        enhancement_config = self.configs["enhancement"]
+        enhancement_config = self.config_image_processor["enhancement"]
         if not all(key in enhancement_config for key in ["brightness", "contrast", "sharpness"]):
             return False
             
@@ -38,12 +44,12 @@ class ImageProcessor(BaseApp):
         """Process image in background thread"""
         try:
             # Decode base64 image
-            image_data = base64.b64decode(self.configs["input"]["image_base64"])
+            image_data = base64.b64decode(self.config_image_processor["input"]["image_base64"])
             self.current_image = Image.open(BytesIO(image_data))
             self.progress = 20
             
             # Apply enhancements
-            enhancement = self.configs["enhancement"]
+            enhancement = self.config_image_processor["enhancement"]
             self.enhanced_image = self.current_image
             
             # Adjust brightness
@@ -122,7 +128,7 @@ class ImageProcessor(BaseApp):
         return {
             "processed_image": base64.b64encode(output.getvalue()).decode(),
             "processing_time": "2 seconds",  # In a real application, should record actual processing time
-            "enhancement_params": self.configs["enhancement"]
+            "enhancement_params": self.config_image_processor["enhancement"]
         } 
     
     

@@ -56,7 +56,7 @@ def test_image_processor(flask_service):
     # upload config
     test_image = create_test_image()
     app.upload_config(
-        "test_image_processor", 
+        "default",
         {
             "input": {"image_base64": test_image},
             "enhancement": {
@@ -106,7 +106,7 @@ def test_data_analyzer(flask_service):
     
     # upload config
     app.upload_config(
-        "test_data_analyzer", 
+        "default",
         {
             "data": {"values": test_data}, 
             "analysis": {"metrics": ["mean", "median", "std", "histogram"]}
@@ -157,7 +157,7 @@ def test_invalid_configs():
     
     # test invalid image processor configs
     app.upload_config(
-        "wrong_cfg", 
+        "default",
         {
             "input": {"wrong_key": "data"}, 
             "enhancement": {"brightness": 1.0}

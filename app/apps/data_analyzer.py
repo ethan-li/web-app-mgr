@@ -15,6 +15,7 @@ class DataAnalyzer(BaseApp):
     def __init__(self, app_id: str):
         super().__init__(app_id)
         self.required_configs = ["data", "analysis"]
+        self.config_data_analyzer = None
         self.analysis_thread = None
         self.raw_data = None
         self.analysis_results = None
@@ -22,17 +23,22 @@ class DataAnalyzer(BaseApp):
         self.current_plot = None
         
     def validate_configs(self) -> bool:
+        if self.configs is None or self.configs.get("default") is None:
+            return False
+
+        self.config_data_analyzer = self.configs["default"]
+
         """Validate configuration files"""
-        if not all(config in self.configs for config in self.required_configs):
+        if not all(config in self.config_data_analyzer for config in self.required_configs):
             return False
             
         # Validate data configuration
-        data_config = self.configs["data"]
+        data_config = self.config_data_analyzer["data"]
         if "values" not in data_config or not isinstance(data_config["values"], list):
             return False
             
         # Validate analysis configuration
-        analysis_config = self.configs["analysis"]
+        analysis_config = self.config_data_analyzer["analysis"]
         if "metrics" not in analysis_config or not isinstance(analysis_config["metrics"], list):
             return False
             
@@ -66,12 +72,12 @@ class DataAnalyzer(BaseApp):
         """Analyze data in background thread"""
         try:
             # Get data
-            self.raw_data = np.array(self.configs["data"]["values"])
+            self.raw_data = np.array(self.config_data_analyzer["data"]["values"])
             self.progress = 20
             
             # Initialize results
             self.analysis_results = {}
-            metrics = self.configs["analysis"]["metrics"]
+            metrics = self.config_data_analyzer["analysis"]["metrics"]
             
             # Calculate basic statistics
             if "mean" in metrics:
