@@ -5,8 +5,8 @@ from flask import Flask, request, jsonify, render_template
 from .web_service import WebService
 
 class FlaskWebService(WebService):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, runtime_dir: str = "runtime"):
+        super().__init__(runtime_dir=runtime_dir)
         self.flask_app = Flask(__name__, 
                              template_folder='../templates',  # Set template directory
                              static_folder='../static')       # Set static file directory

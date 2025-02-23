@@ -4,8 +4,8 @@ from typing import Dict, Any, Optional
 from .app_manager import AppManager
 
 class WebService(ABC):
-    def __init__(self):
-        self.app_manager = AppManager()
+    def __init__(self, runtime_dir: str = "runtime"):
+        self.app_manager = AppManager(runtime_dir=runtime_dir)
         
     @abstractmethod
     def create_app(self, app_type: str) -> Dict[str, Any]:

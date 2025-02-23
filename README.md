@@ -11,6 +11,7 @@ This is a scalable web service framework based on Flask/FastAPI, supporting the 
 - Supports binary data transmission, such as images
 - Comprehensive test coverage
 - Simple frontend interface
+- Runtime directory management for application files
 
 ## Example Applications
 
@@ -19,12 +20,14 @@ This is a scalable web service framework based on Flask/FastAPI, supporting the 
    - Provides brightness, contrast, and sharpness adjustments
    - Real-time preview of processing effects
    - Generates processing reports
+   - Saves intermediate and final results
 
 2. **Data Analyzer**
    - Supports numerical data analysis
    - Provides basic statistical calculations
    - Generates data distribution histograms
    - Outputs detailed analysis reports
+   - Saves raw data and analysis results
 
 ## Installation
 
@@ -42,14 +45,49 @@ This is a scalable web service framework based on Flask/FastAPI, supporting the 
    ```
 
 ## Running the Service
-1. Using Flask(default)
+
+1. Using Flask (default)
 ```bash
-python run.py
+python run.py [--runtime-dir PATH]
 ```
+
 2. Using FastAPI
 ```bash
-FRAMEWORK=fastapi python run.py
+FRAMEWORK=fastapi python run.py [--runtime-dir PATH]
 ```
+
+### Command Line Arguments
+
+- `--framework`: Web framework to use (default: flask, choices: flask, fastapi)
+- `--host`: Host to bind to (default: 0.0.0.0)
+- `--port`: Port to bind to (default: 5000)
+- `--runtime-dir`: Directory for runtime files (default: runtime)
+
+### Environment Variables
+
+The following environment variables can be used to override command line arguments:
+- `FRAMEWORK`: Web framework to use
+- `HOST`: Host to bind to
+- `PORT`: Port to bind to
+- `RUNTIME_DIR`: Directory for runtime files
+
+## Runtime Directory Structure
+
+The service creates a runtime directory for each application instance with the following structure:
+
+```
+runtime/
+├── <app_id>/
+    ├── config/         # Configuration files
+    ├── intermediate/   # Intermediate processing files
+    └── output/         # Final output files
+```
+
+- `config/`: Stores JSON configuration files uploaded by the user
+- `intermediate/`: Stores intermediate files generated during processing
+- `output/`: Stores final output files and reports
+
+The runtime directory is automatically created and managed by the service. Each application instance gets its own subdirectory named with its unique ID. When an application is deleted, its directory and all contents are automatically cleaned up.
 
 ## API Endpoints
 
@@ -72,14 +110,20 @@ FRAMEWORK=fastapi python run.py
 
 1. Inherit the `BaseApp` class
 
-2. Implement the required abstract methods
-validate_configs()
-start()
-stop()
-get_status()
-get_report()
+2. Implement the required abstract methods:
+   - `validate_configs()`: Validate configuration files
+   - `start()`: Start the application
+   - `stop()`: Stop the application
+   - `get_status()`: Get current status
+   - `get_report()`: Get execution report
 
-3. Register the new application in `main.py`
+3. Use the provided file storage methods:
+   - `upload_config(config_name, config_data)`: Upload configuration
+   - `get_config(config_name)`: Get configuration
+   - `save_intermediate_file(filename, content)`: Save intermediate file
+   - `save_output_file(filename, content)`: Save output file
+
+4. Register the new application in `main.py`:
 ```python
 service.app_manager.register_app_type("your_app_name", YourAppClass)
 ```

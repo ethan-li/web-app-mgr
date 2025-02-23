@@ -17,8 +17,8 @@ class ConfigData(BaseModel):
     data: Dict[str, Any]
 
 class FastAPIWebService(WebService):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, runtime_dir: str = "runtime"):
+        super().__init__(runtime_dir=runtime_dir)
         self.fastapi_app = FastAPI()
         
         # Set up static files and templates

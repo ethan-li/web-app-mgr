@@ -3,6 +3,8 @@ import threading
 from typing import Dict, Any, List
 import base64
 from io import BytesIO
+import os
+import json
 
 import matplotlib
 matplotlib.use('Agg')  # Set the backend to non-interactive Agg
@@ -12,8 +14,8 @@ import numpy as np
 from app.core.base_app import BaseApp
 
 class DataAnalyzer(BaseApp):
-    def __init__(self, app_id: str):
-        super().__init__(app_id)
+    def __init__(self, app_id: str, app_dir: str, config_dir: str, intermediate_dir: str, output_dir: str):
+        super().__init__(app_id, app_dir, config_dir, intermediate_dir, output_dir)
         self.required_configs = ["data", "analysis"]
         self.config_data_analyzer = None
         self.analysis_thread = None
@@ -58,10 +60,13 @@ class DataAnalyzer(BaseApp):
             plt.xlabel('Value')
             plt.ylabel('Frequency')
             
-            # Save plot to memory
+            # Save plot to memory and file
             buffer = BytesIO()
             fig.savefig(buffer, format='png', bbox_inches='tight')
             plt.close(fig)  # Explicitly close the figure
+            
+            # Save plot to file
+            self.save_output_file("histogram.png", buffer.getvalue())
             
             return base64.b64encode(buffer.getvalue()).decode()
         except Exception as e:
@@ -71,8 +76,9 @@ class DataAnalyzer(BaseApp):
     def _analyze_data(self):
         """Analyze data in background thread"""
         try:
-            # Get data
+            # Get data and save it
             self.raw_data = np.array(self.config_data_analyzer["data"]["values"])
+            self.save_intermediate_file("raw_data.json", self.raw_data.tolist())
             self.progress = 20
             
             # Initialize results
@@ -92,16 +98,31 @@ class DataAnalyzer(BaseApp):
                 self.analysis_results["std"] = float(np.std(self.raw_data))
                 self.progress = 80
                 
+            # Save intermediate results
+            self.save_intermediate_file("partial_results.json", self.analysis_results)
+            
             # Generate histogram
             if "histogram" in metrics:
                 self.current_plot = self._create_histogram(self.raw_data)
                 
+            # Save final results
+            self.save_output_file("analysis_results.json", {
+                "data_info": {
+                    "sample_size": len(self.raw_data),
+                    "data_range": [float(np.min(self.raw_data)), float(np.max(self.raw_data))]
+                },
+                "analysis_results": self.analysis_results,
+                "processing_time": "2 seconds"
+            })
+            
             # Simulate processing time
             time.sleep(2)
             self.progress = 100
             
         except Exception as e:
             self.progress = -1
+            # Save error information
+            self.save_output_file("error.txt", str(e))
             print(f"Error in _analyze_data: {str(e)}")  # Add error logging
             raise e
             
@@ -149,14 +170,27 @@ class DataAnalyzer(BaseApp):
         if not self.analysis_results or self.progress < 100:
             return {"error": "Analysis not completed"}
             
-        return {
-            "data_info": {
-                "sample_size": len(self.raw_data),
-                "data_range": [float(np.min(self.raw_data)), float(np.max(self.raw_data))]
-            },
-            "analysis_results": self.analysis_results,
-            "plot": self.current_plot if self.current_plot else None,
-            "processing_time": "2 seconds"  # In a real application, should record actual processing time
-        } 
+        # Load final results
+        results_path = os.path.join(self.output_dir, "analysis_results.json")
+        with open(results_path, "r") as f:
+            results = json.load(f)
+            
+        # Load histogram if exists
+        histogram_path = os.path.join(self.output_dir, "histogram.png")
+        if os.path.exists(histogram_path):
+            with open(histogram_path, "rb") as f:
+                results["plot"] = base64.b64encode(f.read()).decode()
+                
+        # Add output files information
+        results["output_files"] = {
+            "data": "raw_data.json",
+            "results": "analysis_results.json",
+            "plot": "histogram.png",
+            "intermediate_files": [
+                "partial_results.json"
+            ]
+        }
+            
+        return results
     
     

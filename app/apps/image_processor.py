@@ -3,14 +3,15 @@ import threading
 from typing import Dict, Any
 import base64
 from io import BytesIO
+import os
 
 from PIL import Image, ImageEnhance
 
 from app.core.base_app import BaseApp
 
 class ImageProcessor(BaseApp):
-    def __init__(self, app_id: str):
-        super().__init__(app_id)
+    def __init__(self, app_id: str, app_dir: str, config_dir: str, intermediate_dir: str, output_dir: str):
+        super().__init__(app_id, app_dir, config_dir, intermediate_dir, output_dir)
         self.required_configs = ["input", "enhancement"]
         self.config_image_processor = None
         self.processing_thread = None
@@ -43,9 +44,15 @@ class ImageProcessor(BaseApp):
     def _process_image(self):
         """Process image in background thread"""
         try:
+            if not self.validate_configs():
+                raise ValueError("Configuration validation failed")
+                
             # Decode base64 image
             image_data = base64.b64decode(self.config_image_processor["input"]["image_base64"])
             self.current_image = Image.open(BytesIO(image_data))
+            
+            # Save original image
+            self.save_intermediate_file("original.jpg", image_data)
             self.progress = 20
             
             # Apply enhancements
@@ -55,17 +62,26 @@ class ImageProcessor(BaseApp):
             # Adjust brightness
             enhancer = ImageEnhance.Brightness(self.enhanced_image)
             self.enhanced_image = enhancer.enhance(enhancement["brightness"])
+            # Save intermediate result
+            self._save_intermediate_image("brightness_adjusted.jpg")
             self.progress = 40
             
             # Adjust contrast
             enhancer = ImageEnhance.Contrast(self.enhanced_image)
             self.enhanced_image = enhancer.enhance(enhancement["contrast"])
+            # Save intermediate result
+            self._save_intermediate_image("contrast_adjusted.jpg")
             self.progress = 60
             
             # Adjust sharpness
             enhancer = ImageEnhance.Sharpness(self.enhanced_image)
             self.enhanced_image = enhancer.enhance(enhancement["sharpness"])
+            # Save intermediate result
+            self._save_intermediate_image("sharpness_adjusted.jpg")
             self.progress = 80
+            
+            # Save final result
+            self._save_output_image("final_result.jpg")
             
             # Simulate processing time
             time.sleep(2)
@@ -73,12 +89,31 @@ class ImageProcessor(BaseApp):
             
         except Exception as e:
             self.progress = -1
+            # Save error information
+            self.save_output_file("error.txt", str(e))
             raise e
+            
+    def _save_intermediate_image(self, filename: str):
+        """Helper method to save intermediate image"""
+        if self.enhanced_image:
+            output = BytesIO()
+            self.enhanced_image.save(output, format="JPEG")
+            self.save_intermediate_file(filename, output.getvalue())
+            
+    def _save_output_image(self, filename: str):
+        """Helper method to save output image"""
+        if self.enhanced_image:
+            output = BytesIO()
+            self.enhanced_image.save(output, format="JPEG")
+            self.save_output_file(filename, output.getvalue())
             
     def start(self) -> None:
         """Start image processing"""
         if self.is_running:
             raise RuntimeError("Application is already running")
+            
+        if not self.validate_configs():
+            raise ValueError("Configuration validation failed")
             
         self.progress = 0
         self.processing_thread = threading.Thread(target=self._process_image)
@@ -121,14 +156,24 @@ class ImageProcessor(BaseApp):
         if not self.enhanced_image or self.progress < 100:
             return {"error": "Processing not completed"}
             
-        # Save processed image
-        output = BytesIO()
-        self.enhanced_image.save(output, format="JPEG")
-        
+        # Get final result image
+        final_result_path = os.path.join(self.output_dir, "final_result.jpg")
+        with open(final_result_path, "rb") as f:
+            image_data = f.read()
+            
         return {
-            "processed_image": base64.b64encode(output.getvalue()).decode(),
+            "processed_image": base64.b64encode(image_data).decode(),
             "processing_time": "2 seconds",  # In a real application, should record actual processing time
-            "enhancement_params": self.config_image_processor["enhancement"]
+            "enhancement_params": self.config_image_processor["enhancement"],
+            "output_files": {
+                "final_result": "final_result.jpg",
+                "intermediate_files": [
+                    "original.jpg",
+                    "brightness_adjusted.jpg",
+                    "contrast_adjusted.jpg",
+                    "sharpness_adjusted.jpg"
+                ]
+            }
         } 
     
     
