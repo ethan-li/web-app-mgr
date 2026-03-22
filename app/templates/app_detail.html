@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block title %}{{ meta.display_name if meta else 'App' }} — Web App Manager{% endblock %}
+
+{% block content %}
+<!-- ① App Info Header -->
+<div class="card section-card detail-header-card mb-4"
+     style="border-left-color: {{ meta.color_from if meta else '#90a4ae' }}">
+    <div class="card-body d-flex align-items-center gap-3">
+        <div class="detail-icon-lg"
+             style="background: linear-gradient(135deg, {{ meta.color_from if meta else '#90a4ae' }}, {{ meta.color_to if meta else '#546e7a' }})">
+            <i class="{{ meta.icon if meta else 'fas fa-cube' }}"></i>
+        </div>
+        <div class="flex-grow-1">
+            <h5 class="mb-0 fw-bold">{{ meta.display_name if meta else 'Application' }}</h5>
+            <p class="text-muted small mb-1">{{ meta.description if meta else '' }}</p>
+            <code class="small text-secondary">ID: {{ app_id }}</code>
+        </div>
+        <div class="text-end">
+            <span id="statusBadge" class="badge bg-secondary fs-6 mb-2 d-block">stopped</span>
+            <a href="/" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Home
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ② Configuration Upload -->
+<div class="card section-card mb-4">
+    <div class="card-body">
+        <h6 class="card-title"><i class="fas fa-folder-open me-2 text-secondary"></i>Configuration</h6>
+        <div class="drop-zone" id="dropZone">
+            <i class="fas fa-cloud-upload-alt d-block"></i>
+            <div class="mt-1 text-muted small">Drop your JSON config here or <u style="cursor:pointer" id="browseLink">browse</u></div>
+            <div class="text-muted" style="font-size:0.78rem">Supported: .json</div>
+        </div>
+        <input type="file" id="configFileInput" accept=".json" class="d-none">
+        <div id="fileChip" class="mt-2 d-none">
+            <span class="badge bg-light text-dark border">
+                <i class="fas fa-file-code me-1"></i>
+                <span id="fileChipName"></span>
+                <button type="button" class="btn-close btn-close-sm ms-2" id="clearFile"
+                        style="font-size:0.6rem;vertical-align:middle"></button>
+            </span>
+        </div>
+        <button class="btn btn-primary btn-sm mt-3" id="uploadConfigBtn" disabled>
+            <i class="fas fa-upload me-1"></i>Upload Config
+        </button>
+        <div id="configMsg" class="mt-2 small text-success d-none"></div>
+    </div>
+</div>
+
+<!-- ③ Controls -->
+<div class="card section-card mb-4">
+    <div class="card-body">
+        <h6 class="card-title"><i class="fas fa-sliders-h me-2 text-secondary"></i>Controls</h6>
+        <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-success" id="startBtn"><i class="fas fa-play me-1"></i>Start</button>
+            <button class="btn btn-warning" id="stopBtn" disabled><i class="fas fa-stop me-1"></i>Stop</button>
+            <button class="btn btn-outline-danger ms-auto" id="deleteBtn"><i class="fas fa-trash me-1"></i>Delete App</button>
+        </div>
+        <p class="text-muted small mt-2 mb-0">Start requires a valid config to be uploaded first.</p>
+    </div>
+</div>
+
+<!-- ④ Progress (hidden until running) -->
+<div class="card section-card mb-4 d-none" id="progressCard">
+    <div class="card-body">
+        <h6 class="card-title"><i class="fas fa-hourglass-half me-2 text-warning"></i>Processing...</h6>
+        <div class="progress">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                 id="progressBar" role="progressbar" style="width:0%">0%</div>
+        </div>
+    </div>
+</div>
+
+<!-- ⑤ Results (hidden until complete) -->
+<div class="card section-card d-none" id="resultsCard">
+    <div class="card-body">
+        <h6 class="card-title"><i class="fas fa-poll me-2 text-success"></i>Results</h6>
+        <!-- Image preview -->
+        <div id="imageResultSection" class="d-none">
+            <p class="small text-muted mb-1">Enhanced Image Preview</p>
+            <img id="resultImage" class="result-image mb-2" src="" alt="Result">
+            <div id="imageParams" class="small text-muted"></div>
+        </div>
+        <!-- Data analyzer results -->
+        <div id="dataResultSection" class="d-none">
+            <div id="statsRow" class="d-flex gap-3 flex-wrap mb-3"></div>
+            <img id="resultPlot" class="result-image" src="" alt="Histogram">
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const APP_ID = "{{ app_id }}";
+let _pollTimer = null;
+let _selectedFile = null;
+
+// ---- Drop Zone ----
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('configFileInput');
+document.getElementById('browseLink').addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+document.getElementById('clearFile').addEventListener('click', clearFile);
+
+function setFile(f) {
+    _selectedFile = f;
+    document.getElementById('fileChipName').textContent = `${f.name}  ${(f.size/1024).toFixed(1)} KB`;
+    document.getElementById('fileChip').classList.remove('d-none');
+    document.getElementById('uploadConfigBtn').disabled = false;
+}
+function clearFile() {
+    _selectedFile = null; fileInput.value = '';
+    document.getElementById('fileChip').classList.add('d-none');
+    document.getElementById('uploadConfigBtn').disabled = true;
+}
+
+// ---- Upload ----
+document.getElementById('uploadConfigBtn').addEventListener('click', async () => {
+    if (!_selectedFile) return;
+    try {
+        const text = await _selectedFile.text();
+        const config = JSON.parse(text);
+        await axios.post(`/api/apps/${APP_ID}/config/default`, config);
+        showMsg('configMsg', '✓ Configuration uploaded successfully.', 'success');
+    } catch (e) {
+        showMsg('configMsg', '✗ ' + (e.response?.data?.error || 'Invalid JSON or upload failed.'), 'danger');
+    }
+});
+
+// ---- Controls ----
+document.getElementById('startBtn').addEventListener('click', async () => {
+    try {
+        await axios.post(`/api/apps/${APP_ID}/start`);
+        startPolling();
+    } catch (e) { alert(e.response?.data?.error || 'Start failed'); }
+});
+document.getElementById('stopBtn').addEventListener('click', async () => {
+    try {
+        await axios.post(`/api/apps/${APP_ID}/stop`);
+        stopPolling(); updateUI({ is_running: false, progress: 0 });
+    } catch (e) { alert(e.response?.data?.error || 'Stop failed'); }
+});
+document.getElementById('deleteBtn').addEventListener('click', async () => {
+    if (!confirm('Delete this application instance?')) return;
+    try { await axios.delete(`/api/apps/${APP_ID}`); window.location.href = '/'; }
+    catch (e) { alert(e.response?.data?.error || 'Delete failed'); }
+});
+
+// ---- Polling ----
+function startPolling() { _pollTimer = setInterval(poll, 800); poll(); }
+function stopPolling() { if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; } }
+
+async function poll() {
+    try {
+        const res = await axios.get(`/api/apps/${APP_ID}/status`);
+        updateUI(res.data);
+        if (!res.data.is_running && res.data.progress === 100) {
+            stopPolling(); loadReport();
+        }
+    } catch (e) { console.error('Poll error', e); }
+}
+
+function updateUI(s) {
+    const running = s.is_running;
+    const progress = s.progress || 0;
+    document.getElementById('statusBadge').textContent = running ? 'running' : (progress === 100 ? 'done' : 'stopped');
+    document.getElementById('statusBadge').className = 'badge fs-6 mb-2 d-block ' + (running ? 'bg-success' : (progress===100 ? 'bg-info' : 'bg-secondary'));
+    document.getElementById('startBtn').disabled = running;
+    document.getElementById('stopBtn').disabled = !running;
+    const pc = document.getElementById('progressCard');
+    const pb = document.getElementById('progressBar');
+    if (running || (progress > 0 && progress < 100)) {
+        pc.classList.remove('d-none');
+        pb.style.width = progress + '%'; pb.textContent = progress + '%';
+    } else { pc.classList.add('d-none'); }
+}
+
+async function loadReport() {
+    try {
+        const res = await axios.get(`/api/apps/${APP_ID}/report`);
+        const r = res.data;
+        const rc = document.getElementById('resultsCard');
+        if (r.processed_image) {
+            rc.classList.remove('d-none');
+            document.getElementById('imageResultSection').classList.remove('d-none');
+            document.getElementById('resultImage').src = 'data:image/jpeg;base64,' + r.processed_image;
+            if (r.enhancement_params) {
+                const p = r.enhancement_params;
+                document.getElementById('imageParams').textContent =
+                    `Brightness: ${p.brightness}  Contrast: ${p.contrast}  Sharpness: ${p.sharpness}  Processing time: ${r.processing_time}`;
+            }
+        } else if (r.analysis_results) {
+            rc.classList.remove('d-none');
+            document.getElementById('dataResultSection').classList.remove('d-none');
+            const stats = document.getElementById('statsRow');
+            for (const [k, v] of Object.entries(r.analysis_results)) {
+                stats.innerHTML += `<div class="text-center px-3 py-2 border rounded"><div class="fw-bold">${v.toFixed(4)}</div><div class="text-muted small">${k}</div></div>`;
+            }
+            if (r.plot) document.getElementById('resultPlot').src = 'data:image/png;base64,' + r.plot;
+        }
+    } catch(e) { console.error('Report error', e); }
+}
+
+function showMsg(id, msg, type) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.className = `mt-2 small text-${type}`;
+    el.classList.remove('d-none');
+    setTimeout(() => el.classList.add('d-none'), 4000);
+}
+
+// ---- Init ----
+poll();
+</script>
+{% endblock %}
+

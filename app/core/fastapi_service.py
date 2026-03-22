@@ -8,45 +8,63 @@ from fastapi.responses import HTMLResponse
 from fastapi.requests import Request
 
 from .web_service import WebService
+from .app_registry import AppRegistry
 
 
 class CreateAppRequest(BaseModel):
     app_type: str
 
-class ConfigData(BaseModel):
-    data: Dict[str, Any]
-
 class FastAPIWebService(WebService):
     def __init__(self):
         super().__init__()
+        self.app_registry = AppRegistry()
         self.fastapi_app = FastAPI()
-        
+
         # Set up static files and templates
         self.templates = Jinja2Templates(directory="app/templates")
         self.fastapi_app.mount("/static", StaticFiles(directory="app/static"), name="static")
-        
+
         self._register_routes()
         
     def _register_routes(self):
-        # Homepage route
+        # Page routes
         self.fastapi_app.get("/")(self.index)
-        
+        self.fastapi_app.get("/app/{app_id}")(self.app_detail)
+
+        # Registry API
+        self.fastapi_app.get("/api/apps/registry")(self.get_registry)
+
         # Application management
         self.fastapi_app.post("/api/apps")(self.create_app)
         self.fastapi_app.delete("/api/apps/{app_id}")(self.delete_app)
         self.fastapi_app.get("/api/apps/types")(self.get_app_types)
         self.fastapi_app.get("/api/apps")(self.get_all_apps)
-        
+
         # Application operations
         self.fastapi_app.post("/api/apps/{app_id}/config/{config_name}")(self.upload_config)
         self.fastapi_app.post("/api/apps/{app_id}/start")(self.start_app)
         self.fastapi_app.post("/api/apps/{app_id}/stop")(self.stop_app)
         self.fastapi_app.get("/api/apps/{app_id}/status")(self.get_app_status)
         self.fastapi_app.get("/api/apps/{app_id}/report")(self.get_app_report)
-        
-    async def index(self, request: Request):
-        """Render homepage"""
+
+    async def index(self, request: Request) -> HTMLResponse:
+        """Render homepage with app icon grid."""
         return self.templates.TemplateResponse("index.html", {"request": request})
+
+    async def app_detail(self, app_id: str, request: Request) -> HTMLResponse:
+        """Render the per-instance operation page."""
+        app = self.app_manager.get_app(app_id)
+        if app is None:
+            raise HTTPException(status_code=404, detail="Application not found")
+        app_type = app.get_status().get("app_type", "")
+        meta = self.app_registry.get_metadata(app_type)
+        return self.templates.TemplateResponse(
+            "app_detail.html", {"request": request, "app_id": app_id, "meta": meta}
+        )
+
+    async def get_registry(self) -> Dict[str, Any]:
+        """Return list of available app types with metadata."""
+        return {"registry": self.app_registry.to_dict_list()}
 
     async def create_app(self, request: CreateAppRequest) -> Dict[str, Any]:
         try:
@@ -63,13 +81,18 @@ class FastAPIWebService(WebService):
         self.app_manager.delete_app(app_id)
         return {"message": "Application deleted"}
         
-    async def upload_config(self, app_id: str, config_name: str, config: ConfigData) -> Dict[str, Any]:
+    async def upload_config(self, app_id: str, config_name: str, request: Request) -> Dict[str, Any]:
         error = self._get_app_or_error(app_id)
         if error:
             raise HTTPException(status_code=404, detail=error["error"])
-            
+
+        try:
+            config_data = await request.json()
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid JSON body")
+
         app = self.app_manager.get_app(app_id)
-        app.upload_config(config_name, config.data)
+        app.upload_config(config_name, config_data)
         return {"message": "Configuration uploaded"}
         
     async def start_app(self, app_id: str) -> Dict[str, Any]:

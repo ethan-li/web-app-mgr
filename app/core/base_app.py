@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List
+from typing import Dict, Any, List, TYPE_CHECKING
 from pathlib import Path
+
+if TYPE_CHECKING:
+    from .app_registry import AppMetadata
 
 class BaseApp(ABC):
     def __init__(self, app_id: str):
@@ -40,6 +43,11 @@ class BaseApp(ABC):
     @abstractmethod
     def get_report(self) -> Dict[str, Any]:
         """Get application execution report"""
-        pass 
+        pass
+
+    @classmethod
+    def get_metadata(cls) -> "AppMetadata":
+        """Return AppMetadata for this app type. Subclasses must override this."""
+        raise NotImplementedError(f"{cls.__name__} must implement get_metadata()")
 
     

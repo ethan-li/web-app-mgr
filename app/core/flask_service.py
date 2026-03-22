@@ -3,35 +3,54 @@ from typing import Dict, Any
 from flask import Flask, request, jsonify, render_template
 
 from .web_service import WebService
+from .app_registry import AppRegistry
 
 class FlaskWebService(WebService):
     def __init__(self):
         super().__init__()
-        self.flask_app = Flask(__name__, 
-                             template_folder='../templates',  # Set template directory
-                             static_folder='../static')       # Set static file directory
+        self.app_registry = AppRegistry()
+        self.flask_app = Flask(__name__,
+                               template_folder='../templates',
+                               static_folder='../static')
         self._register_routes()
         
     def _register_routes(self):
-        # Homepage route
+        # Page routes
         self.flask_app.route('/')(self.index)
-        
+        self.flask_app.route('/app/<app_id>')(self.app_detail)
+
+        # Registry API
+        self.flask_app.route('/api/apps/registry', methods=['GET'])(self.get_registry)
+
         # Application management
         self.flask_app.route('/api/apps', methods=['POST'])(self.create_app)
         self.flask_app.route('/api/apps/<app_id>', methods=['DELETE'])(self.delete_app)
         self.flask_app.route('/api/apps/types', methods=['GET'])(self.get_app_types)
         self.flask_app.route('/api/apps', methods=['GET'])(self.get_all_apps)
-        
+
         # Application operations
         self.flask_app.route('/api/apps/<app_id>/config/<config_name>', methods=['POST'])(self.upload_config)
         self.flask_app.route('/api/apps/<app_id>/start', methods=['POST'])(self.start_app)
         self.flask_app.route('/api/apps/<app_id>/stop', methods=['POST'])(self.stop_app)
         self.flask_app.route('/api/apps/<app_id>/status', methods=['GET'])(self.get_app_status)
         self.flask_app.route('/api/apps/<app_id>/report', methods=['GET'])(self.get_app_report)
-        
+
     def index(self):
-        """Render homepage"""
+        """Render homepage with app icon grid."""
         return render_template('index.html')
+
+    def app_detail(self, app_id: str):
+        """Render the per-instance operation page."""
+        app = self.app_manager.get_app(app_id)
+        if app is None:
+            return "Application not found", 404
+        app_type = app.get_status().get("app_type", "")
+        meta = self.app_registry.get_metadata(app_type)
+        return render_template('app_detail.html', app_id=app_id, meta=meta)
+
+    def get_registry(self) -> Dict[str, Any]:
+        """Return list of available app types with metadata."""
+        return jsonify({"registry": self.app_registry.to_dict_list()})
 
     def create_app(self) -> Dict[str, Any]:
         data = request.get_json()

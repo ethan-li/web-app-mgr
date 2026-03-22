@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from app.core.base_app import BaseApp
+from app.core.app_registry import AppMetadata
 
 class DataAnalyzer(BaseApp):
     def __init__(self, app_id: str):
@@ -99,10 +100,12 @@ class DataAnalyzer(BaseApp):
             # Simulate processing time
             time.sleep(2)
             self.progress = 100
-            
+            self.is_running = False
+
         except Exception as e:
             self.progress = -1
-            print(f"Error in _analyze_data: {str(e)}")  # Add error logging
+            self.is_running = False
+            print(f"Error in _analyze_data: {str(e)}")
             raise e
             
     def start(self) -> None:
@@ -157,6 +160,17 @@ class DataAnalyzer(BaseApp):
             "analysis_results": self.analysis_results,
             "plot": self.current_plot if self.current_plot else None,
             "processing_time": "2 seconds"  # In a real application, should record actual processing time
-        } 
+        }
+
+    @classmethod
+    def get_metadata(cls) -> AppMetadata:
+        return AppMetadata(
+            type_name="data_analyzer",
+            display_name="Data Analyzer",
+            description="Analyze numerical datasets with statistical metrics and histogram visualization.",
+            icon="fas fa-chart-bar",
+            color_from="#66bb6a",
+            color_to="#2e7d32",
+        )
     
     

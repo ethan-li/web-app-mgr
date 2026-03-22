@@ -7,6 +7,7 @@ from io import BytesIO
 from PIL import Image, ImageEnhance
 
 from app.core.base_app import BaseApp
+from app.core.app_registry import AppMetadata
 
 class ImageProcessor(BaseApp):
     def __init__(self, app_id: str):
@@ -70,9 +71,11 @@ class ImageProcessor(BaseApp):
             # Simulate processing time
             time.sleep(2)
             self.progress = 100
-            
+            self.is_running = False
+
         except Exception as e:
             self.progress = -1
+            self.is_running = False
             raise e
             
     def start(self) -> None:
@@ -129,6 +132,17 @@ class ImageProcessor(BaseApp):
             "processed_image": base64.b64encode(output.getvalue()).decode(),
             "processing_time": "2 seconds",  # In a real application, should record actual processing time
             "enhancement_params": self.config_image_processor["enhancement"]
-        } 
+        }
+
+    @classmethod
+    def get_metadata(cls) -> AppMetadata:
+        return AppMetadata(
+            type_name="image_processor",
+            display_name="Image Processor",
+            description="Upload and enhance images with brightness, contrast, and sharpness adjustments.",
+            icon="fas fa-image",
+            color_from="#42a5f5",
+            color_to="#1565c0",
+        )
     
     

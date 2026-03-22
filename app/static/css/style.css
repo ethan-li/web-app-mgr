@@ -1,0 +1,148 @@
+/* ===== Navbar ===== */
+.wam-navbar {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.wam-brand {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #e0e0e0 !important;
+    letter-spacing: 0.02em;
+}
+.wam-navbar .nav-link {
+    color: #b0bec5 !important;
+}
+.wam-navbar .nav-link:hover {
+    color: #ffffff !important;
+}
+
+/* ===== App Icon Grid (index page) ===== */
+.app-icon-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 24px;
+    padding: 8px 0 24px 0;
+}
+
+.app-icon-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    padding: 0;
+    transition: transform 0.15s ease;
+}
+.app-icon-tile:hover {
+    transform: translateY(-4px);
+}
+
+.app-icon-circle {
+    width: 96px;
+    height: 96px;
+    border-radius: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    font-size: 2.4rem;
+    color: #fff;
+    transition: box-shadow 0.15s ease;
+}
+.app-icon-tile:hover .app-icon-circle {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.28);
+}
+
+.app-icon-label {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #37474f;
+    text-align: center;
+    line-height: 1.3;
+}
+
+/* ===== Instance List (index page) ===== */
+.instance-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+.instance-row:last-child {
+    border-bottom: none;
+}
+.instance-icon-sm {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+.instance-info {
+    flex: 1;
+    min-width: 0;
+}
+.instance-id {
+    font-size: 0.78rem;
+    color: #90a4ae;
+    font-family: monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ===== App Detail Page ===== */
+.detail-header-card {
+    border-left: 5px solid;
+    border-radius: 8px;
+}
+.detail-icon-lg {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.6rem;
+    flex-shrink: 0;
+}
+
+/* ===== Drop Zone ===== */
+.drop-zone {
+    border: 2px dashed #b0bec5;
+    border-radius: 10px;
+    padding: 36px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: #fafafa;
+}
+.drop-zone.drag-over {
+    border-color: #42a5f5;
+    background: #e3f2fd;
+}
+.drop-zone i {
+    font-size: 2rem;
+    color: #90a4ae;
+    margin-bottom: 8px;
+}
+
+/* ===== Progress Bar ===== */
+.progress { height: 22px; border-radius: 11px; }
+.progress-bar { border-radius: 11px; transition: width 0.4s ease; }
+
+/* ===== Result Image ===== */
+.result-image { max-width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+
+/* ===== Utility ===== */
+.section-card { border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+

@@ -5,19 +5,25 @@ from app.core.fastapi_service import FastAPIWebService
 from app.apps.image_processor import ImageProcessor
 from app.apps.data_analyzer import DataAnalyzer
 
+# Map of type_name -> app class; add new apps here
+_APP_CLASSES = [ImageProcessor, DataAnalyzer]
+
+
 def create_app(framework="flask"):
-    """Create a web service instance"""
+    """Create a web service instance and register all known app types."""
     if framework.lower() == "flask":
         service = FlaskWebService()
     elif framework.lower() == "fastapi":
         service = FastAPIWebService()
     else:
         raise ValueError(f"Unsupported framework: {framework}")
-        
-    # Register application types
-    service.app_manager.register_app_type("image_processor", ImageProcessor)
-    service.app_manager.register_app_type("data_analyzer", DataAnalyzer)
-    
+
+    # Register each app type in both the manager and the registry
+    for app_class in _APP_CLASSES:
+        meta = app_class.get_metadata()
+        service.app_manager.register_app_type(meta.type_name, app_class)
+        service.app_registry.register(meta)
+
     return service
     
 def main():

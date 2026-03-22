@@ -1,248 +1,177 @@
 {% extends "base.html" %}
+{% block title %}Web App Manager — Home{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Create New Application</h5>
-                <form id="createAppForm">
-                    <div class="mb-3">
-                        <label for="appType" class="form-label">Application Type</label>
-                        <select class="form-select" id="appType" required>
-                            <option value="">Select type...</option>
-                            <option value="image_processor">Image Processor</option>
-                            <option value="data_analyzer">Data Analyzer</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Create</button>
-                </form>
-            </div>
+<!-- ① App Catalog Grid -->
+<div class="card section-card mb-4">
+    <div class="card-body">
+        <h5 class="card-title mb-1"><i class="fas fa-th-large me-2 text-secondary"></i>Available Applications</h5>
+        <p class="text-muted small mb-3">Click an icon to create a new instance.</p>
+        <div class="app-icon-grid" id="appIconGrid">
+            <!-- Tiles injected by JS from /api/apps/registry -->
         </div>
     </div>
 </div>
 
-<div class="row mt-4">
-    <div class="col-12">
-        <h3>Application List</h3>
-        <div id="appList" class="row">
-            <!-- Application cards will be dynamically inserted here -->
+<!-- ② Running Instances -->
+<div class="card section-card">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title mb-0"><i class="fas fa-layer-group me-2 text-secondary"></i>Your Instances</h5>
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadInstances()">
+                <i class="fas fa-sync-alt me-1"></i>Refresh
+            </button>
+        </div>
+        <div id="instanceList">
+            <p class="text-muted small" id="noInstancesMsg">No instances yet. Create one above.</p>
         </div>
     </div>
 </div>
 
-<!-- Application card template -->
-<template id="appCardTemplate">
-    <div class="col-md-6 mb-4">
-        <div class="card app-card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="card-title mb-0">Application ID: <span class="app-id"></span></h5>
-                    <span class="badge status-badge"></span>
-                </div>
-                <p class="card-text">Type: <span class="app-type"></span></p>
-                
-                <!-- Configuration section -->
-                <div class="config-section mb-3">
-                    <h6>Configuration</h6>
-                    <div class="mb-2">
-                        <input type="file" class="form-control config-file" accept=".json">
+<!-- ③ Create Confirmation Modal -->
+<div class="modal fade" id="createModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="app-icon-circle modal-icon-circle" id="modalIconCircle">
+                        <i id="modalIcon"></i>
                     </div>
-                    <div class="mb-2">
-                        <button class="btn btn-sm btn-secondary upload-config">Upload Config</button>
+                    <div>
+                        <h6 class="mb-0 fw-bold" id="modalAppName"></h6>
+                        <small class="text-muted">Create new instance</small>
                     </div>
                 </div>
-                
-                <!-- Control buttons -->
-                <div class="d-flex gap-2">
-                    <button class="btn btn-success btn-sm start-app">Start</button>
-                    <button class="btn btn-danger btn-sm stop-app">Stop</button>
-                    <button class="btn btn-danger btn-sm delete-app">Delete</button>
-                </div>
-                
-                <!-- Progress section -->
-                <div class="progress-section mt-3" style="display: none;">
-                    <h6>Progress</h6>
-                    <div class="progress">
-                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-                    </div>
-                </div>
-                
-                <!-- Preview section -->
-                <div class="preview-section mt-3" style="display: none;">
-                    <h6>Preview</h6>
-                    <img class="preview-image img-fluid" src="" alt="Preview">
-                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-2">
+                <p class="text-muted small mb-0" id="modalAppDesc"></p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-sm btn-primary" id="modalCreateBtn">
+                    <i class="fas fa-plus me-1"></i>Create
+                </button>
             </div>
         </div>
     </div>
-</template>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Utility functions
-function showError(message) {
-    alert(message);
-}
+let _registry = [];
+let _createModal = null;
+let _pendingType = null;
 
-function updateAppCard(appId, status) {
-    const card = document.querySelector(`.app-card[data-app-id="${appId}"]`);
-    if (!card) return;
-    
-    const statusBadge = card.querySelector('.status-badge');
-    const startBtn = card.querySelector('.start-app');
-    const stopBtn = card.querySelector('.stop-app');
-    const progressSection = card.querySelector('.progress-section');
-    const previewSection = card.querySelector('.preview-section');
-    const progressBar = card.querySelector('.progress-bar');
-    const previewImage = card.querySelector('.preview-image');
-    
-    // Update status badge
-    statusBadge.textContent = status.status;
-    statusBadge.className = 'badge status-badge ' + 
-        (status.status === 'running' ? 'bg-success' : 'bg-secondary');
-    
-    // Update buttons
-    startBtn.disabled = status.status === 'running';
-    stopBtn.disabled = status.status !== 'running';
-    
-    // Update progress
-    if (status.progress !== undefined) {
-        progressSection.style.display = 'block';
-        progressBar.style.width = `${status.progress}%`;
-        progressBar.textContent = `${status.progress}%`;
-    } else {
-        progressSection.style.display = 'none';
-    }
-    
-    // Update preview or plot
-    if (status.preview || status.plot) {
-        previewSection.style.display = 'block';
-        previewImage.src = status.preview ? 
-            `data:image/jpeg;base64,${status.preview}` : 
-            `data:image/png;base64,${status.plot}`;
-    } else {
-        previewSection.style.display = 'none';
-    }
-}
-
-// Event handlers
-document.getElementById('createAppForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const appType = document.getElementById('appType').value;
-    
+// ---- Registry / Grid ----
+async function loadRegistry() {
     try {
-        const response = await axios.post('/api/apps', { app_type: appType });
-        const appId = response.data.app_id;
-        await loadApps();
-    } catch (error) {
-        showError(error.response?.data?.error || 'Failed to create application');
+        const res = await axios.get('/api/apps/registry');
+        _registry = res.data.registry;
+        renderGrid();
+    } catch (e) {
+        console.error('Failed to load registry', e);
+    }
+}
+
+function renderGrid() {
+    const grid = document.getElementById('appIconGrid');
+    grid.innerHTML = '';
+    _registry.forEach(app => {
+        const tile = document.createElement('button');
+        tile.className = 'app-icon-tile';
+        tile.innerHTML = `
+            <div class="app-icon-circle"
+                 style="background: linear-gradient(135deg, ${app.color_from}, ${app.color_to})">
+                <i class="${app.icon}"></i>
+            </div>
+            <span class="app-icon-label">${app.display_name}</span>`;
+        tile.addEventListener('click', () => openCreateModal(app));
+        grid.appendChild(tile);
+    });
+}
+
+function openCreateModal(app) {
+    _pendingType = app.type_name;
+    document.getElementById('modalAppName').textContent = app.display_name;
+    document.getElementById('modalAppDesc').textContent = app.description;
+    document.getElementById('modalIcon').className = app.icon;
+    const circle = document.getElementById('modalIconCircle');
+    circle.style.background = `linear-gradient(135deg, ${app.color_from}, ${app.color_to})`;
+    _createModal.show();
+}
+
+document.getElementById('modalCreateBtn').addEventListener('click', async () => {
+    try {
+        const res = await axios.post('/api/apps', { app_type: _pendingType });
+        _createModal.hide();
+        window.location.href = `/app/${res.data.app_id}`;
+    } catch (e) {
+        alert(e.response?.data?.error || 'Failed to create instance');
     }
 });
 
-// App card event handlers
-document.getElementById('appList').addEventListener('click', async (e) => {
-    const target = e.target;
-    const card = target.closest('.app-card');
-    if (!card) return;
-    
-    const appId = card.dataset.appId;
-    
+// ---- Instances List ----
+async function loadInstances() {
     try {
-        if (target.classList.contains('upload-config')) {
-            const fileInput = card.querySelector('.config-file');
-            const file = fileInput.files[0];
-            if (!file) {
-                showError('Please select a configuration file');
-                return;
-            }
-            
-            const reader = new FileReader();
-            reader.onload = async () => {
-                try {
-                    const config = JSON.parse(reader.result);
-                    await axios.post(`/api/apps/${appId}/config/default`, config);
-                    showError('Configuration uploaded successfully');
-                } catch (error) {
-                    showError('Invalid JSON file');
-                }
-            };
-            reader.readAsText(file);
+        const res = await axios.get('/api/apps');
+        const apps = res.data.apps;
+        const list = document.getElementById('instanceList');
+        const noMsg = document.getElementById('noInstancesMsg');
+        const entries = Object.entries(apps);
+        if (entries.length === 0) {
+            list.innerHTML = '';
+            noMsg.style.display = '';
+            return;
         }
-        else if (target.classList.contains('start-app')) {
-            await axios.post(`/api/apps/${appId}/start`);
-        }
-        else if (target.classList.contains('stop-app')) {
-            await axios.post(`/api/apps/${appId}/stop`);
-        }
-        else if (target.classList.contains('delete-app')) {
-            if (confirm('Are you sure you want to delete this application?')) {
-                await axios.delete(`/api/apps/${appId}`);
-                card.remove();
-            }
-        }
-    } catch (error) {
-        showError(error.response?.data?.error || 'Operation failed');
+        noMsg.style.display = 'none';
+        list.innerHTML = '';
+        entries.forEach(([appId, info]) => {
+            const appType = info.status.app_type || '';
+            const meta = _registry.find(r => r.type_name === appType) || {};
+            const isRunning = info.is_running;
+            const row = document.createElement('div');
+            row.className = 'instance-row';
+            row.innerHTML = `
+                <div class="instance-icon-sm"
+                     style="background: linear-gradient(135deg, ${meta.color_from||'#90a4ae'}, ${meta.color_to||'#546e7a'})">
+                    <i class="${meta.icon||'fas fa-cube'}"></i>
+                </div>
+                <div class="instance-info">
+                    <div class="fw-semibold small">${meta.display_name || appType}</div>
+                    <div class="instance-id">${appId}</div>
+                </div>
+                <span class="badge ${isRunning ? 'bg-success' : 'bg-secondary'} me-2">
+                    ${isRunning ? 'running' : 'stopped'}
+                </span>
+                <a href="/app/${appId}" class="btn btn-sm btn-outline-primary me-1">
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteInstance('${appId}', this)">
+                    <i class="fas fa-trash"></i>
+                </button>`;
+            list.appendChild(row);
+        });
+    } catch (e) {
+        console.error('Failed to load instances', e);
     }
+}
+
+async function deleteInstance(appId, btn) {
+    if (!confirm('Delete this instance?')) return;
+    try {
+        await axios.delete(`/api/apps/${appId}`);
+        loadInstances();
+    } catch (e) {
+        alert(e.response?.data?.error || 'Delete failed');
+    }
+}
+
+// ---- Init ----
+document.addEventListener('DOMContentLoaded', () => {
+    _createModal = new bootstrap.Modal(document.getElementById('createModal'));
+    loadRegistry().then(() => loadInstances());
 });
-
-// Load and render apps
-async function loadApps() {
-    try {
-        const response = await axios.get('/api/apps');
-        const apps = response.data.apps;  // Get the apps object from response
-        
-        const appList = document.getElementById('appList');
-        const template = document.getElementById('appCardTemplate');
-        
-        appList.innerHTML = '';
-        
-        for (const [appId, appInfo] of Object.entries(apps)) {  // Iterate over apps object entries
-            const card = template.content.cloneNode(true);
-            const cardElement = card.querySelector('.card');
-            
-            cardElement.dataset.appId = appId;
-            card.querySelector('.app-id').textContent = appId;
-            
-            // Get app type from status if available
-            const appType = appInfo.status.app_type || 'Unknown';
-            card.querySelector('.app-type').textContent = appType;
-            
-            appList.appendChild(card);
-            
-            // Update status with the full status object
-            updateAppCard(appId, {
-                status: appInfo.is_running ? 'running' : 'stopped',
-                progress: appInfo.status.progress || 0,
-                preview: appInfo.status.preview,
-                plot: appInfo.status.plot
-            });
-        }
-    } catch (error) {
-        console.error('Load apps error:', error);
-        showError('Failed to load applications');
-    }
-}
-
-// Status polling
-async function pollStatus() {
-    const cards = document.querySelectorAll('.app-card');
-    for (const card of cards) {
-        const appId = card.dataset.appId;
-        try {
-            const response = await axios.get(`/api/apps/${appId}/status`);
-            updateAppCard(appId, response.data);
-        } catch (error) {
-            console.error(`Failed to update status for app ${appId}:`, error);
-        }
-    }
-}
-
-// Initial load
-loadApps();
-
-// Start polling
-setInterval(pollStatus, 1000);
 </script>
-{% endblock %} 
+{% endblock %}
