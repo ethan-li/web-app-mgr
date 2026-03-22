@@ -2,6 +2,30 @@
 
 This is a scalable web service framework based on Flask/FastAPI, supporting the lifecycle management of multiple independent applications.
 
+## 🚀 Try It Online
+
+[**Live Demo**](https://web-app-mgr.onrender.com) - Click to try the application online!
+
+> Note: The free tier may take 30 seconds to wake up on first access.
+
+## 🌍 Deployment
+
+Want to share this application with others? Check out the [Deployment Guide](DEPLOYMENT.md) for step-by-step instructions on deploying to:
+- **Render** (Recommended)
+- **Railway**
+- **PythonAnywhere**
+- And more!
+
+### Quick Deploy to Render
+
+1. Push your code to GitHub
+2. Visit [Render.com](https://render.com)
+3. Create a new Web Service and connect your GitHub repository
+4. Render will automatically deploy your application
+5. Share the generated URL with others!
+
+See [QUICK_DEPLOY.md](QUICK_DEPLOY.md) for a 5-minute quick start guide.
+
 ## Features
 
 - Supports both Flask and FastAPI frameworks

@@ -6,3 +6,4 @@ pillow>=11.1.0
 python-multipart>=0.0.20
 numpy>=2.2.2
 matplotlib>=3.10.0
+gunicorn>=23.0.0
