@@ -146,7 +146,11 @@ class FlaskWebService(WebService):
             }
         return jsonify({"apps": apps_info})
         
+    def __call__(self, environ, start_response):
+        """Make the service itself a WSGI callable, so gunicorn can use it directly."""
+        return self.flask_app(environ, start_response)
+
     def run(self, host: str = "0.0.0.0", port: int = 5000):
-        self.flask_app.run(host=host, port=port) 
+        self.flask_app.run(host=host, port=port)
 
         
