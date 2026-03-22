@@ -22,7 +22,7 @@ git push origin main
    Name: web-app-mgr
    Environment: Python 3
    Build Command: pip install -r requirements.txt
-   Start Command: gunicorn -w 4 -b 0.0.0.0:$PORT -k sync --timeout 120 "app.main:create_app()"
+   Start Command: gunicorn -w 1 -b 0.0.0.0:$PORT -k sync --timeout 120 "app.main:create_app()"
    Instance Type: Free
    ```
 7. **Click** "Create Web Service"
@@ -67,7 +67,7 @@ pip install -r requirements.txt
 python run.py
 
 # Or use gunicorn (production mode)
-gunicorn -w 4 -b 0.0.0.0:5000 -k sync --timeout 120 "app.main:create_app()"
+gunicorn -w 1 -b 0.0.0.0:5000 -k sync --timeout 120 "app.main:create_app()"
 
 # Visit http://localhost:5000
 ```
